@@ -2,33 +2,251 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
     ContextTypes,
+    filters,
 )
 
 BOT_TOKEN = "8733139795:AAEMhuj0yyk0B8tI-har3VhjgLekgdFeo04"
 
+ADMIN_ID = 6204038568
+
+CHANNEL_USERNAME = "@Roy_op"
+
+REGISTER_LINK = "https://6club11.com/#/register?invitationCode=43646122491"
+
+user_data_dict = {}
+
+
+# START COMMAND
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "Join Prediction Channel",
-                url="https://t.me/Roy_op"
-            )
-        ]
-    ]
+    user = update.effective_user
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    try:
+        member = await context.bot.get_chat_member(
+            CHANNEL_USERNAME,
+            user.id
+        )
+
+        if member.status in ["left", "kicked"]:
+
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Join Prediction Channel",
+                        url="https://t.me/Roy_op"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "Check Joined",
+                        callback_data="check_join"
+                    )
+                ]
+            ]
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await update.message.reply_text(
+                "❌ Please Join Prediction Channel First",
+                reply_markup=reply_markup
+            )
+
+            return
+
+    except:
+        pass
 
     await update.message.reply_text(
-        "✅ Bot Running Successfully",
-        reply_markup=reply_markup
+        "✅ Channel Verified\n\nSend Your UID"
     )
 
+
+# CHECK JOIN BUTTON
+async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    user = query.from_user
+
+    member = await context.bot.get_chat_member(
+        CHANNEL_USERNAME,
+        user.id
+    )
+
+    if member.status in ["member", "administrator", "creator"]:
+
+        await query.message.reply_text(
+            "✅ Join Successful\n\nNow Send Your UID"
+        )
+
+    else:
+
+        await query.message.reply_text(
+            "❌ You Have Not Joined Yet"
+        )
+
+
+# UID CHECK
+async def uid_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    if user_id in user_data_dict:
+        return
+
+    uid = update.message.text
+
+    if uid.startswith("1"):
+
+        user_data_dict[user_id] = {
+            "uid": uid
+        }
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Deposit Problem",
+                    callback_data="deposit"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "Withdraw Problem",
+                    callback_data="withdraw"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "Prediction Channel",
+                    url="https://t.me/Roy_op"
+                )
+            ]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            "✅ UID Verified\n\nSelect Your Problem",
+            reply_markup=reply_markup
+        )
+
+    else:
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Register Now",
+                    url=REGISTER_LINK
+                )
+            ]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            "❌ Invalid UID\n\nRegister From Our Link",
+            reply_markup=reply_markup
+        )
+
+
+# BUTTON HANDLER
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    if user_id not in user_data_dict:
+        return
+
+    if query.data == "deposit":
+
+        user_data_dict[user_id]["problem"] = "Deposit"
+
+        await query.message.reply_text(
+            "📸 Send Deposit Screenshot"
+        )
+
+    elif query.data == "withdraw":
+
+        user_data_dict[user_id]["problem"] = "Withdraw"
+
+        await query.message.reply_text(
+            "📸 Send Withdraw Screenshot"
+        )
+
+
+# PHOTO HANDLER
+async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    if user_id not in user_data_dict:
+        return
+
+    data = user_data_dict[user_id]
+
+    uid = data.get("uid")
+    problem = data.get("problem", "Not Selected")
+
+    caption = f"""
+🚨 New Complaint
+
+👤 Username: @{update.effective_user.username}
+
+🆔 Telegram ID: {user_id}
+
+🎮 UID: {uid}
+
+⚠️ Problem: {problem}
+"""
+
+    await context.bot.send_message(
+        ADMIN_ID,
+        caption
+    )
+
+    await context.bot.forward_message(
+        ADMIN_ID,
+        update.message.chat.id,
+        update.message.message_id
+    )
+
+    await update.message.reply_text(
+        "✅ Complaint Submitted Successfully"
+    )
+
+
+# MAIN
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 
-print("Bot Running...")
+app.add_handler(
+    CallbackQueryHandler(check_join, pattern="check_join")
+)
+
+app.add_handler(CallbackQueryHandler(button_handler))
+
+app.add_handler(
+    MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        uid_check
+    )
+)
+
+app.add_handler(
+    MessageHandler(
+        filters.PHOTO,
+        photo_handler
+    )
+)
+
+print("Bot Running Successfully...")
 
 app.run_polling()
