@@ -16,10 +16,10 @@ CHANNEL_USERNAME = "@Roy_op"
 
 REGISTER_LINK = "https://6club11.com/#/register?invitationCode=43646122491"
 
-user_data_dict = {}
+user_data = {}
 
 
-# START COMMAND
+# START
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = update.effective_user
@@ -59,12 +59,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         pass
 
+    user_data[user.id] = {
+        "step": "uid"
+    }
+
     await update.message.reply_text(
         "✅ Channel Verified\n\nSend Your UID"
     )
 
 
-# CHECK JOIN BUTTON
+# CHECK JOIN
 async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
@@ -79,6 +83,10 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if member.status in ["member", "administrator", "creator"]:
 
+        user_data[user.id] = {
+            "step": "uid"
+        }
+
         await query.message.reply_text(
             "✅ Join Successful\n\nNow Send Your UID"
         )
@@ -90,66 +98,93 @@ async def check_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-# UID CHECK
-async def uid_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# MESSAGE HANDLER
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
-    if user_id in user_data_dict:
+    if user_id not in user_data:
         return
 
-    uid = update.message.text
+    data = user_data[user_id]
 
-    if uid.startswith("1"):
+    step = data.get("step")
 
-        user_data_dict[user_id] = {
-            "uid": uid
-        }
+    # UID STEP
+    if step == "uid":
 
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "Deposit Problem",
-                    callback_data="deposit"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "Withdraw Problem",
-                    callback_data="withdraw"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "Prediction Channel",
-                    url="https://t.me/Roy_op"
-                )
+        uid = update.message.text
+
+        if uid.startswith("1"):
+
+            data["uid"] = uid
+
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Deposit Problem",
+                        callback_data="deposit"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "Withdraw Problem",
+                        callback_data="withdraw"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "Prediction Channel",
+                        url="https://t.me/Roy_op"
+                    )
+                ]
             ]
-        ]
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await update.message.reply_text(
+                "✅ UID Verified\n\nSelect Your Problem",
+                reply_markup=reply_markup
+            )
+
+        else:
+
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Register Now",
+                        url=REGISTER_LINK
+                    )
+                ]
+            ]
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await update.message.reply_text(
+                "❌ Invalid UID\n\nRegister From Our Link",
+                reply_markup=reply_markup
+            )
+
+    # DEPOSIT ORDER NUMBER
+    elif step == "deposit_order":
+
+        data["deposit_order"] = update.message.text
+
+        data["step"] = "deposit_uid_ss"
 
         await update.message.reply_text(
-            "✅ UID Verified\n\nSelect Your Problem",
-            reply_markup=reply_markup
+            "📸 Send UID Screenshot"
         )
 
-    else:
+    # WITHDRAW ORDER NUMBER
+    elif step == "withdraw_order":
 
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "Register Now",
-                    url=REGISTER_LINK
-                )
-            ]
-        ]
+        data["withdraw_order"] = update.message.text
 
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        data["step"] = "withdraw_bank"
 
         await update.message.reply_text(
-            "❌ Invalid UID\n\nRegister From Our Link",
-            reply_markup=reply_markup
+            "📄 Send Bank Statement Screenshot"
         )
 
 
@@ -161,24 +196,89 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = query.from_user.id
 
-    if user_id not in user_data_dict:
+    if user_id not in user_data:
         return
 
+    data = user_data[user_id]
+
+    # DEPOSIT
     if query.data == "deposit":
 
-        user_data_dict[user_id]["problem"] = "Deposit"
+        data["problem"] = "Deposit"
+        data["step"] = "deposit_ss"
 
         await query.message.reply_text(
             "📸 Send Deposit Screenshot"
         )
 
+    # WITHDRAW
     elif query.data == "withdraw":
 
-        user_data_dict[user_id]["problem"] = "Withdraw"
+        data["problem"] = "Withdraw"
+        data["step"] = "withdraw_ss"
 
         await query.message.reply_text(
             "📸 Send Withdraw Screenshot"
         )
+
+    # SUBMIT
+    elif query.data == "submit":
+
+        caption = f"""
+🚨 New Complaint
+
+👤 Username: @{query.from_user.username}
+
+🆔 Telegram ID: {user_id}
+
+🎮 UID: {data.get('uid')}
+
+⚠️ Problem: {data.get('problem')}
+"""
+
+        if data.get("problem") == "Deposit":
+
+            caption += f"""
+
+📦 Order Number: {data.get('deposit_order')}
+"""
+
+        if data.get("problem") == "Withdraw":
+
+            caption += f"""
+
+📦 Withdraw Order: {data.get('withdraw_order')}
+"""
+
+        await context.bot.send_message(
+            ADMIN_ID,
+            caption
+        )
+
+        photo_keys = [
+            "deposit_ss",
+            "uid_ss",
+            "payment_ss",
+            "bank_ss",
+            "withdraw_ss",
+            "withdraw_bank_ss"
+        ]
+
+        for key in photo_keys:
+
+            if key in data:
+
+                await context.bot.forward_message(
+                    ADMIN_ID,
+                    query.message.chat.id,
+                    data[key]
+                )
+
+        await query.message.reply_text(
+            "✅ Complaint Submitted Successfully"
+        )
+
+        user_data.pop(user_id)
 
 
 # PHOTO HANDLER
@@ -186,40 +286,94 @@ async def photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
-    if user_id not in user_data_dict:
+    if user_id not in user_data:
         return
 
-    data = user_data_dict[user_id]
+    data = user_data[user_id]
 
-    uid = data.get("uid")
-    problem = data.get("problem", "Not Selected")
+    step = data.get("step")
 
-    caption = f"""
-🚨 New Complaint
+    # DEPOSIT FLOW
+    if step == "deposit_ss":
 
-👤 Username: @{update.effective_user.username}
+        data["deposit_ss"] = update.message.message_id
 
-🆔 Telegram ID: {user_id}
+        data["step"] = "deposit_order"
 
-🎮 UID: {uid}
+        await update.message.reply_text(
+            "📦 Send Deposit Order Number"
+        )
 
-⚠️ Problem: {problem}
-"""
+    elif step == "deposit_uid_ss":
 
-    await context.bot.send_message(
-        ADMIN_ID,
-        caption
-    )
+        data["uid_ss"] = update.message.message_id
 
-    await context.bot.forward_message(
-        ADMIN_ID,
-        update.message.chat.id,
-        update.message.message_id
-    )
+        data["step"] = "payment_ss"
 
-    await update.message.reply_text(
-        "✅ Complaint Submitted Successfully"
-    )
+        await update.message.reply_text(
+            "📸 Send Payment Screenshot"
+        )
+
+    elif step == "payment_ss":
+
+        data["payment_ss"] = update.message.message_id
+
+        data["step"] = "bank_ss"
+
+        await update.message.reply_text(
+            "📄 Send Bank Statement Screenshot"
+        )
+
+    elif step == "bank_ss":
+
+        data["bank_ss"] = update.message.message_id
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Submit Complaint",
+                    callback_data="submit"
+                )
+            ]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            "✅ All Proofs Saved\n\nClick Submit Complaint",
+            reply_markup=reply_markup
+        )
+
+    # WITHDRAW FLOW
+    elif step == "withdraw_ss":
+
+        data["withdraw_ss"] = update.message.message_id
+
+        data["step"] = "withdraw_order"
+
+        await update.message.reply_text(
+            "📦 Send Withdraw Order Number"
+        )
+
+    elif step == "withdraw_bank":
+
+        data["withdraw_bank_ss"] = update.message.message_id
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Submit Complaint",
+                    callback_data="submit"
+                )
+            ]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            "✅ All Proofs Saved\n\nClick Submit Complaint",
+            reply_markup=reply_markup
+        )
 
 
 # MAIN
@@ -236,7 +390,7 @@ app.add_handler(CallbackQueryHandler(button_handler))
 app.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
-        uid_check
+        message_handler
     )
 )
 
