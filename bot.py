@@ -13,9 +13,9 @@ from telegram.ext import (
     filters,
 )
 
-BOT_TOKEN = "8733139795:AAEMhuj0yyk0B8tI-har3VhjgLekgdFeo04"
+BOT_TOKEN = "8977764016:AAEf9lhXD4qDFzguoHvxCS7gPu57WiH1dtY"
 
-ADMIN_ID = 6204038568
+ADMIN_ID = 7693040685
 
 REGISTER_LINK = "https://13lgame14.com/register?inviteCode=HVS2YBN&from=web"
 
