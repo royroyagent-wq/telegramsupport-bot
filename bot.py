@@ -17,11 +17,11 @@ BOT_TOKEN = "8733139795:AAEMhuj0yyk0B8tI-har3VhjgLekgdFeo04"
 
 ADMIN_ID = 6204038568
 
-REGISTER_LINK = "https://6club11.com/#/register?invitationCode=43646122491"
+REGISTER_LINK = "https://13lgame14.com/register?inviteCode=HVS2YBN&from=web"
 
-PREDICTION_CHANNEL = "https://t.me/Roy_op"
+PREDICTION_CHANNEL = "https://t.me/+Rze4ddKfR944OWZl"
 
-CHANNEL_USERNAME = "@Roy_op"
+CHANNEL_USERNAME = "https://t.me/+Rze4ddKfR944OWZl"
 
 users = {}
 
@@ -41,7 +41,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "🎧 Welcome To 6 Club Customer Service",
+        "🎧 Welcome To13L.geme Customer Service",
         reply_markup=reply_markup
     )
 
@@ -213,7 +213,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # MAIN UID VERIFY
     if step == "uid":
 
-        if text.startswith("1"):
+        if text.startswith("6"):
 
             data["verified"] = True
 
